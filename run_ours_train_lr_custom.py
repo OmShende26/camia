@@ -61,10 +61,10 @@ def train_model_single(
         "auc_train": all_auc_train,
         "tpr_test": all_tpr,
         "tpr_train": all_tpr_train,
-        "fpr": fpr,
-        "tpr": tpr,
-        "fpr_train": fpr_train,
-        "tpr_train": tpr_train,
+        "fpr_curve": fpr,
+        "tpr_curve": tpr,
+        "fpr_train_curve": fpr_train,
+        "tpr_train_curve": tpr_train,
         "pred_probs_test": pred_probs,
         "pred_probs_train": pred_probs_train,
     }
@@ -300,7 +300,7 @@ def main():
     
     # Plot ROC curve
     roc_file = os.path.join(args.output_dir, "roc_curve_custom.png")
-    plot_roc_curve(results['fpr'], results['tpr'], results['auc_test'], roc_file)
+    plot_roc_curve(results['fpr_curve'], results['tpr_curve'], results['auc_test'], roc_file)
     
     # Save results summary
     results_file = os.path.join(args.output_dir, "results_summary_custom.txt")
