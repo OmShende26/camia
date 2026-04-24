@@ -177,8 +177,6 @@ def main(config: DictConfig):
     # member_path = "/content/seen_books.jsonl"
     # nonmember_path = "/content/unseen_books.jsonl"
 
-    import os
-
     # Detect environment
     if os.path.exists("/content"):
         # Running in Google Colab
