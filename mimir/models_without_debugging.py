@@ -12,7 +12,6 @@ from collections import defaultdict
 from multiprocessing.pool import ThreadPool
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from hf_olmo import *
 
 from mimir.config import ExperimentConfig
 from mimir.custom_datasets import SEPARATOR
@@ -51,8 +50,7 @@ class Model(nn.Module):
                 self.model.cpu()
             except NameError:
                 pass
-            if self.config.openai_config is None:
-                self.model.to(self.device, non_blocking=True)
+            self.model.to(self.device, non_blocking=True)
             if self.config.env_config.compile:
                 torch.compile(self.model)
             print(f'DONE ({time.time() - start:.2f}s)')
@@ -265,61 +263,34 @@ class Model(nn.Module):
 
     def load_base_model_and_tokenizer(self, model_kwargs):
         """
-            Load the base model and tokenizer for a given model name.
+            Load the base model and tokenizer for a given HuggingFace model.
+            Simplified for HF-only models (no OpenAI, no special model types).
         """
         if self.device is None or self.name is None:
             raise ValueError("Please set self.device and self.name in child class")
 
-        if self.config.openai_config is None:
-            print(f'Loading BASE model {self.name}...')
-            device_map = self.device_map # if self.device_map else 'cpu'
-            if "silo" in self.name or "balanced" in self.name:
-                from utils.transformers.model import OpenLMforCausalLM
-                model = OpenLMforCausalLM.from_pretrained(
-                    self.name, **model_kwargs, device_map=self.device, cache_dir=self.cache_dir)
-                # Extract the model from the model wrapper so we dont need to call model.model
-            elif "llama" in self.name or "alpaca" in self.name:
-                # TODO: This should be smth specified in config in case user has
-                # llama is too big, gotta use device map
-                model = transformers.AutoModelForCausalLM.from_pretrained(self.name, **model_kwargs, device_map="balanced_low_0", cache_dir=self.cache_dir)
-                self.device = 'cuda:1'
-            elif "stablelm" in self.name.lower():  # models requiring custom code
-                model = transformers.AutoModelForCausalLM.from_pretrained(
-                    self.name, **model_kwargs, trust_remote_code=True, device_map=device_map, cache_dir=self.cache_dir)
-            elif "olmo" in self.name.lower():
-                model = transformers.AutoModelForCausalLM.from_pretrained(
-                    self.name, **model_kwargs, trust_remote_code=True, cache_dir=self.cache_dir)
-            else:
-                # import pdb; pdb.set_trace()
-                model = transformers.AutoModelForCausalLM.from_pretrained(
-                    self.name, **model_kwargs, device_map=device_map, cache_dir=self.cache_dir)
-        else:
-            model = None
+        print(f'Loading BASE model {self.name}...')
+        device_map = self.device_map
+        
+        # Load model from HuggingFace
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            self.name, 
+            **model_kwargs, 
+            device_map=device_map, 
+            cache_dir=self.cache_dir,
+            trust_remote_code=True
+        )
 
-        optional_tok_kwargs = {}
-        if "facebook/opt-" in self.name:
-            print("Using non-fast tokenizer for OPT")
-            optional_tok_kwargs['fast'] = False
-        if self.config.dataset_member in ['pubmed'] or self.config.dataset_nonmember in ['pubmed']:
-            optional_tok_kwargs['padding_side'] = 'left'
-            self.pad_token = self.tokenizer.eos_token_id
-        if "silo" in self.name or "balanced" in self.name:
-            tokenizer = transformers.GPTNeoXTokenizerFast.from_pretrained(
-                "EleutherAI/gpt-neox-20b", **optional_tok_kwargs, cache_dir=self.cache_dir)
-        elif "datablations" in self.name:
-            tokenizer = transformers.AutoTokenizer.from_pretrained(
-                "gpt2", **optional_tok_kwargs, cache_dir=self.cache_dir)
-        elif "llama" in self.name or "alpaca" in self.name:
-            tokenizer = transformers.LlamaTokenizer.from_pretrained(
-                self.name, **optional_tok_kwargs, cache_dir=self.cache_dir)
-        elif "pubmedgpt" in self.name:
-            tokenizer = transformers.AutoTokenizer.from_pretrained(
-                "stanford-crfm/BioMedLM", **optional_tok_kwargs, cache_dir=self.cache_dir)
-        else:
-            tokenizer = transformers.AutoTokenizer.from_pretrained(
-                self.name, **optional_tok_kwargs, cache_dir=self.cache_dir,
-                trust_remote_code=True if "olmo" in self.name.lower() else False)
-        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        # Load tokenizer from HuggingFace
+        tokenizer = transformers.AutoTokenizer.from_pretrained(
+            self.name, 
+            cache_dir=self.cache_dir,
+            trust_remote_code=True
+        )
+        
+        # Add padding token if not present
+        if tokenizer.pad_token is None:
+            tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 
         return model, tokenizer
 
@@ -435,9 +406,6 @@ class LanguageModel(Model):
         """
             Get the average rank of each observed token sorted by model likelihood
         """
-        openai_config = self.config.openai_config
-        assert openai_config is None, "get_rank not implemented for OpenAI models"
-
         tokenized = self.tokenizer(text, return_tensors="pt").to(self.device)
         logits = self.model(**tokenized).logits[:,:-1]
         labels = tokenized.input_ids[:,1:]
