@@ -169,7 +169,8 @@ def main(config: DictConfig):
     # Load model
     print(f"Loading model: {config.base_model}")
     base_model = LanguageModel(config)
-    base_model.to(device)
+    if not config.env_config.device_map:
+        base_model.to(device)
 
     # Load custom JSONL datasets from colab paths
     print("Loading datasets from colab paths...")

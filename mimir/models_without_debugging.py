@@ -36,9 +36,15 @@ class Model(nn.Module):
     def to(self, device):
         """
             Shift model to a particular device.
+            Skips the move when the model was loaded with a device_map
+            (accelerate dispatch), since those models cannot be moved.
         """
-        self.model.to(device, non_blocking=True)
-        self.device = device
+        if self.device_map:
+            # Model is already placed by accelerate; just record the device.
+            self.device = device
+        else:
+            self.model.to(device, non_blocking=True)
+            self.device = device
 
     def load(self):
         """
