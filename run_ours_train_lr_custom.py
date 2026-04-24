@@ -182,28 +182,51 @@ def main():
     print(f"Member samples: {len(member_preds)}")
     print(f"Non-member samples: {len(nonmember_preds)}")
     
-    # Convert to numpy arrays
-    # Assuming each element is a tensor or array - stack them
-    try:
-        if isinstance(member_preds[0], dict):
-            # If predictions are dicts, convert to feature vectors
-            # This depends on your actual data structure
-            x_member = np.array([list(p.values()) for p in member_preds])
-            x_nonmember = np.array([list(p.values()) for p in nonmember_preds])
-        else:
-            x_member = np.array(member_preds)
-            x_nonmember = np.array(nonmember_preds)
-    except Exception as e:
-        print(f"Error converting data: {e}")
-        print(f"Member type: {type(member_preds[0])}")
-        print(f"Nonmember type: {type(nonmember_preds[0])}")
-        raise
+    # Convert defaultdict predictions to feature vectors
+    def extract_features_from_defaultdict(preds_list):
+        """
+        Convert list of defaultdicts to feature vectors by aggregating token probs.
+        Each defaultdict has keys like 'tk_probs', 'labels', 'tk_probs_repeated_N', etc.
+        We extract numerical features from these.
+        """
+        features = []
+        for sample_dict in preds_list:
+            sample_features = []
+            
+            # Process each key in the defaultdict
+            for key, values in sorted(sample_dict.items()):
+                if isinstance(values, list) and len(values) > 0:
+                    try:
+                        # Convert to numpy array
+                        arr = np.array(values, dtype=float)
+                        
+                        # Flatten if needed
+                        if len(arr.shape) > 1:
+                            arr = arr.flatten()
+                        
+                        # Aggregate: mean, max, min, std
+                        if len(arr) > 0:
+                            sample_features.extend([
+                                np.mean(arr),
+                                np.max(arr),
+                                np.min(arr),
+                                np.std(arr) if len(arr) > 1 else 0.0,
+                                len(arr),  # count
+                            ])
+                    except (ValueError, TypeError):
+                        # Skip non-numeric values like 'labels'
+                        continue
+            
+            if sample_features:
+                features.append(sample_features)
+        
+        return np.array(features)
     
-    # Flatten if needed
-    if len(x_member.shape) > 2:
-        x_member = x_member.reshape(x_member.shape[0], -1)
-    if len(x_nonmember.shape) > 2:
-        x_nonmember = x_nonmember.reshape(x_nonmember.shape[0], -1)
+    print("Extracting features from defaultdicts...")
+    x_member = extract_features_from_defaultdict(member_preds)
+    x_nonmember = extract_features_from_defaultdict(nonmember_preds)
+    
+    print(f"Successfully converted to feature vectors")
     
     print(f"Member features shape: {x_member.shape}")
     print(f"Non-member features shape: {x_nonmember.shape}")
