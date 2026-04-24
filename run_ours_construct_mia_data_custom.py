@@ -186,10 +186,11 @@ def main(config: DictConfig):
         # Kaggle mounts datasets at /kaggle/input/<dataset-slug>/
         # (NOT /kaggle/input/datasets/<username>/<slug>/)
     # print("Available datasets in /kaggle/input:", os.listdir("/kaggle/input"))
-    kaggle_dataset_dir = "/kaggle/input/camia-dataset"
-    member_path = os.path.join(kaggle_dataset_dir, "seen_books.jsonl")
-    nonmember_path = os.path.join(kaggle_dataset_dir, "unseen_books.jsonl")
-
+    # kaggle_dataset_dir = "/kaggle/input/camia-dataset"
+    # member_path = os.path.join(kaggle_dataset_dir, "seen_books.jsonl")
+    # nonmember_path = os.path.join(kaggle_dataset_dir, "unseen_books.jsonl")
+    member_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/seen_books.jsonl"
+    nonmember_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/unseen_books.jsonl"    
 
     print("Member path:", member_path)
     print("Non-member path:", nonmember_path)
