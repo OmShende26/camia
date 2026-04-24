@@ -173,21 +173,23 @@ def main(config: DictConfig):
         base_model.to(device)
 
     # # Load custom JSONL datasets from colab paths
-    # print("Loading datasets from colab paths...")
+    print("Loading datasets from colab paths...")
     # member_path = "/content/seen_books.jsonl"
     # nonmember_path = "/content/unseen_books.jsonl"
 
     # Detect environment
-    if os.path.exists("/content"):
-        # Running in Google Colab
-        member_path = "/content/seen_books.jsonl"
-        nonmember_path = "/content/unseen_books.jsonl"
-    elif os.path.exists("/kaggle/input"):
-        # Running in Kaggle
-        member_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/seen_books.jsonl"
-        nonmember_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/unseen_books.jsonl"
-    else:
-        raise EnvironmentError("Unknown environment: neither Colab nor Kaggle detected.")
+    # if os.path.exists("/content"):
+    #     # Running in Google Colab
+    #     member_path = "/content/seen_books.jsonl"
+    #     nonmember_path = "/content/unseen_books.jsonl"
+    # elif os.path.exists("/kaggle/input"):
+        # Kaggle mounts datasets at /kaggle/input/<dataset-slug>/
+        # (NOT /kaggle/input/datasets/<username>/<slug>/)
+    # print("Available datasets in /kaggle/input:", os.listdir("/kaggle/input"))
+    kaggle_dataset_dir = "/kaggle/input/camia-dataset"
+    member_path = os.path.join(kaggle_dataset_dir, "seen_books.jsonl")
+    nonmember_path = os.path.join(kaggle_dataset_dir, "unseen_books.jsonl")
+
 
     print("Member path:", member_path)
     print("Non-member path:", nonmember_path)
