@@ -172,10 +172,29 @@ def main(config: DictConfig):
     if not config.env_config.device_map:
         base_model.to(device)
 
-    # Load custom JSONL datasets from colab paths
-    print("Loading datasets from colab paths...")
-    member_path = "/content/seen_books.jsonl"
-    nonmember_path = "/content/unseen_books.jsonl"
+    # # Load custom JSONL datasets from colab paths
+    # print("Loading datasets from colab paths...")
+    # member_path = "/content/seen_books.jsonl"
+    # nonmember_path = "/content/unseen_books.jsonl"
+
+    import os
+
+    # Detect environment
+    if os.path.exists("/content"):
+        # Running in Google Colab
+        member_path = "/content/seen_books.jsonl"
+        nonmember_path = "/content/unseen_books.jsonl"
+    elif os.path.exists("/kaggle/input"):
+        # Running in Kaggle
+        member_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/seen_books.jsonl"
+        nonmember_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/unseen_books.jsonl"
+    else:
+        raise EnvironmentError("Unknown environment: neither Colab nor Kaggle detected.")
+
+    print("Member path:", member_path)
+    print("Non-member path:", nonmember_path)
+
+
     
     print(f"Loading member data from {member_path}...")
     data_member = load_jsonl_dataset(member_path)
