@@ -219,8 +219,19 @@ def main():
             
             if sample_features:
                 features.append(sample_features)
+            else:
+                # Handle case where no features were extracted
+                features.append([0.0])  # At least one feature
         
-        return np.array(features)
+        # Find max length and pad all to same length
+        max_len = max(len(f) for f in features) if features else 1
+        features_padded = []
+        for f in features:
+            if len(f) < max_len:
+                f = f + [0.0] * (max_len - len(f))  # Pad with zeros
+            features_padded.append(f)
+        
+        return np.array(features_padded, dtype=float)
     
     print("Extracting features from defaultdicts...")
     x_member = extract_features_from_defaultdict(member_preds)
