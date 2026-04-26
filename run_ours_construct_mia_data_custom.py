@@ -16,9 +16,11 @@ import pickle
 import json
 import numpy as np
 from typing import List
+from datasets import load_dataset 
 
 from mimir.utils import fix_seed
 from mimir.models_without_debugging import LanguageModel
+
 
 
 def load_jsonl_dataset(jsonl_path):
@@ -36,6 +38,33 @@ def load_jsonl_dataset(jsonl_path):
     except Exception as e:
         print(f"Error loading {jsonl_path}: {e}")
     return texts
+
+
+def load_wikimia_dataset(repo_id="SimMIA/WikiMIA-25", split="WikiMIA_length64"):
+    """
+    Load texts from Hugging Face WikiMIA benchmark.
+    Expected columns: "input" (text) and "label" (1 for member, 0 for non-member)
+    """
+    print(f"Downloading/Loading HF Dataset: {repo_id} (Split: {split})...")
+    try:
+        dataset = load_dataset(repo_id, split=split)
+    except Exception as e:
+        print(f"Error loading Hugging Face dataset {repo_id}: {e}")
+        return [], []
+        
+    member_texts =[]
+    nonmember_texts =[]
+    
+    for row in dataset:
+        # In WikiMIA: label == 1 indicates seen/member, label == 0 indicates unseen/nonmember
+        if row.get("label") == 1:
+            member_texts.append(row.get("input", ""))
+        else:
+            nonmember_texts.append(row.get("input", ""))
+            
+    return member_texts, nonmember_texts
+
+
 
 
 def get_probability_history(
@@ -172,38 +201,36 @@ def main(config: DictConfig):
     if not config.env_config.device_map:
         base_model.to(device)
 
-    # # Load custom JSONL datasets from colab paths
-    print("Loading datasets from colab paths...")
-    # member_path = "/content/seen_books.jsonl"
-    # nonmember_path = "/content/unseen_books.jsonl"
+    # # # Load custom JSONL datasets from colab paths
+    # print("Loading datasets from colab paths...")
+    # member_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/seen_books.jsonl"
+    # nonmember_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/unseen_books.jsonl"    
 
-    # Detect environment
-    # if os.path.exists("/content"):
-    #     # Running in Google Colab
-    #     member_path = "/content/seen_books.jsonl"
-    #     nonmember_path = "/content/unseen_books.jsonl"
-    # elif os.path.exists("/kaggle/input"):
-        # Kaggle mounts datasets at /kaggle/input/<dataset-slug>/
-        # (NOT /kaggle/input/datasets/<username>/<slug>/)
-    # print("Available datasets in /kaggle/input:", os.listdir("/kaggle/input"))
-    # kaggle_dataset_dir = "/kaggle/input/camia-dataset"
-    # member_path = os.path.join(kaggle_dataset_dir, "seen_books.jsonl")
-    # nonmember_path = os.path.join(kaggle_dataset_dir, "unseen_books.jsonl")
-    member_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/seen_books.jsonl"
-    nonmember_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/unseen_books.jsonl"    
-
-    print("Member path:", member_path)
-    print("Non-member path:", nonmember_path)
-
-
+    USE_HF_DATASET = True
     
-    print(f"Loading member data from {member_path}...")
-    data_member = load_jsonl_dataset(member_path)
-    print(f"Loaded {len(data_member)} member texts")
+    if USE_HF_DATASET:
+        # WikiMIA-25 splits are: "WikiMIA_length32", "WikiMIA_length64", "WikiMIA_length128"
+        data_member, data_nonmember = load_wikimia_dataset(
+            repo_id="SimMIA/WikiMIA-25", 
+            split="WikiMIA_length64" 
+        )
+        print(f"Loaded {len(data_member)} member texts from Hugging Face.")
+        print(f"Loaded {len(data_nonmember)} non-member texts from Hugging Face.")
     
-    print(f"Loading non-member data from {nonmember_path}...")
-    data_nonmember = load_jsonl_dataset(nonmember_path)
-    print(f"Loaded {len(data_nonmember)} non-member texts")
+    else:
+        # Load local JSONL datasets 
+        member_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/seen_books.jsonl"
+        nonmember_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/unseen_books.jsonl"    
+        
+        print(f"Loading member data from {member_path}...")
+        data_member = load_jsonl_dataset(member_path)
+        print(f"Loaded {len(data_member)} member texts")
+        
+        print(f"Loading non-member data from {nonmember_path}...")
+        data_nonmember = load_jsonl_dataset(nonmember_path)
+        print(f"Loaded {len(data_nonmember)} non-member texts")
+    # ==========================================
+
 
     if not data_member or not data_nonmember:
         raise ValueError("Failed to load datasets. Check file paths.")
@@ -242,7 +269,7 @@ def main(config: DictConfig):
     )
 
     # Save features
-    output_file = os.path.join(new_folder, "all_features_custom.pkl")
+    output_file = os.path.join(new_folder, "all_features_custom_wikimia25.pkl")
     with open(output_file, "wb") as f:
         pickle.dump(
             {"member_preds": member_features, "nonmember_preds": nonmember_features}, f
