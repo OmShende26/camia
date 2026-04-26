@@ -147,17 +147,19 @@ def count_above_mean(x):
 
 def find_t(probabilities, tau, alpha):
     T = len(probabilities)
+    if T == 0:
+        return 0
     all_alpha = np.mean(np.array(probabilities) > tau)
     # cumsum in the reverse order
-    t = np.where(
+    indices = np.where(
         np.cumsum(np.array(probabilities[::-1]) > tau) / T > alpha * all_alpha
-    )[0][0]
+    )[0]
 
-    # t = np.where(np.cumsum(np.array(probabilities)>tau)/T > alpha*all_alpha)[0][0]
-    # if len(t) == 0:
-    #     return -1
+    # Guard: if no index satisfies the condition, return 0 (safe fallback)
+    if len(indices) == 0:
+        return 0
 
-    return t
+    return indices[0]
 
 
 def get_roc(signal, membership):
