@@ -103,9 +103,9 @@ def main():
     predictions = (probs > 0.5).astype(int)
 
     print("\n" + "="*40)
-    print("DETECTION RESULTS (Top 10)")
+    print("DETECTION RESULTS (Top)")
     print("="*40)
-    for i in range(min(10, num_sample)):
+    for i in range(num_sample):
         print(f"Book Sample {i+1}: {probs[i]*100:6.2f}% Member Score")
     
     print(f"\nFinal Summary: Identified {np.sum(predictions)} training members out of {num_sample} suspected books.")
