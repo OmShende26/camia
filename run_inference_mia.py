@@ -2,7 +2,6 @@
 run_inference_mia.py
 
 Use a trained Context-Aware MIA model to predict membership on unknown data.
-Now updated to handle ground-truth labels (if available) to calculate ROC AUC and TPR@5% FPR.
 """
 
 import pickle
@@ -11,8 +10,6 @@ import os
 import warnings
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score, roc_curve
 
 from util_features import (
     collect_all_features,
@@ -22,16 +19,15 @@ from util_features import (
 
 warnings.filterwarnings("ignore")
 
-def load_custom_pickle(path):
+def load_custom_pickle(path, member_only=False):
     with open(path, "rb") as f:
         data = pickle.load(f)
-        
-    member_preds = data.get("member_preds", [])
-    nonmember_preds = data.get("nonmember_preds", [])
-    
-    # Quick fix to combine them but remember the true label
-    # 1 for members, 0 for nonmembers
-    src = [(sample, 1) for sample in member_preds] + [(sample, 0) for sample in nonmember_preds]
+    if member_only:
+        src = data.get("member_preds", [])
+        print(f"[INFO] Loading ONLY member_preds ({len(src)} samples)")
+    else:
+        src = data.get("member_preds", []) + data.get("nonmember_preds", [])
+        print(f"[INFO] Loading member_preds ({len(data.get('member_preds', []))}) + nonmember_preds ({len(data.get('nonmember_preds', []))})")
     
     def _probs(sample_dict, key):
         v = sample_dict.get(key, [])
@@ -46,16 +42,14 @@ def load_custom_pickle(path):
         if hasattr(entry, "squeeze"): entry = entry.squeeze()
         return entry.tolist() if hasattr(entry, "tolist") else list(entry)
 
-    rep_key = next((k for k in ["tk_probs_repeated_5", "tk_probs_repeated_10"] if src and k in src[0][0]), None)
+    rep_key = next((k for k in ["tk_probs_repeated_5", "tk_probs_repeated_10"] if src and k in src[0]), None)
     
-    x_all, label_all, x_repeated_all, y_true = [], [], [], []
-    for sample, label in src:
+    x_all, label_all, x_repeated_all = [], [], []
+    for sample in src:
         probs, labels, rep = _probs(sample, "tk_probs"), _labels(sample), _probs(sample, rep_key)
         if probs is None or rep is None or len(probs) < 5: continue
         x_all.append(probs); label_all.append(labels); x_repeated_all.append(rep)
-        y_true.append(label)
-    
-    return x_all, label_all, x_repeated_all, np.array(y_true)
+    return x_all, label_all, x_repeated_all
 
 def extract_rep_half_split(x_repeated_all):
     half1, half2 = [], []
@@ -64,28 +58,17 @@ def extract_rep_half_split(x_repeated_all):
         half1.append(probs[:mid]); half2.append(probs[mid:])
     return half1, half2
 
-def plot_roc(fpr, tpr, auc, path):
-    plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, "darkorange", lw=2, label=f"ROC (AUC={auc:.3f})")
-    plt.plot([0, 1], [0, 1], "navy", lw=1.5, linestyle="--")
-    plt.xlabel("False Positive Rate"); plt.ylabel("True Positive Rate")
-    plt.title("ROC – Inference on Test Data")
-    plt.legend(loc="lower right"); plt.grid(alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(path, dpi=150)
-    plt.close()
-    print(f"ROC curve saved → {path}")
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--features_file", type=str, required=True)
     parser.add_argument("--model_file", type=str, required=True)
+    parser.add_argument("--member_only", action="store_true", help="Process only member_preds (default: process both member and nonmember)")
     args = parser.parse_args()
 
     with open(args.model_file, "rb") as f:
         trained = pickle.load(f)
     
-    x_all, label_all, x_rep, y_true = load_custom_pickle(args.features_file)
+    x_all, label_all, x_rep = load_custom_pickle(args.features_file, member_only=args.member_only)
     num_sample = len(x_all)
 
     print("Extracting signals for unknown data...")
@@ -126,47 +109,13 @@ def main():
     predictions = (probs > 0.5).astype(int)
 
     print("\n" + "="*40)
-    print("INFERENCE RESULTS")
+    print("DETECTION RESULTS (Top)")
     print("="*40)
+    for i in range(num_sample):
+        print(f"Book Sample {i+1}: {probs[i]*100:6.2f}% Member Score")
     
-    # Count how many members and nonmembers we have
-    has_mixed_labels = (len(np.unique(y_true)) > 1)
-    
-    if has_mixed_labels:
-        auc = roc_auc_score(y_true, probs)
-        fpr, tpr, _ = roc_curve(y_true, probs)
-        
-        # Calculate TPR @ 5% FPR (FPR <= 0.05)
-        idx_5 = np.where(fpr <= 0.05)[0]
-        tpr_at_5_fpr = tpr[idx_5[-1]] * 100 if len(idx_5) > 0 else 0.0
-        
-        # Calculate TPR @ 1% FPR for comparison
-        idx_1 = np.where(fpr <= 0.01)[0]
-        tpr_at_1_fpr = tpr[idx_1[-1]] * 100 if len(idx_1) > 0 else 0.0
-        
-        print(f"Test AUC             : {auc:.4f}")
-        print(f"Test TPR @ 5% FPR    : {tpr_at_5_fpr:.2f}%")
-        print(f"Test TPR @ 1% FPR    : {tpr_at_1_fpr:.2f}%")
-        
-        plot_roc(fpr, tpr, auc, "roc_curve_inference.png")
-    else:
-        print("Note: The test data only contains one class (either all members or all non-members).")
-        print("Cannot compute AUC or ROC Curve.")
-
-    member_count = np.sum(y_true == 1)
-    nonmember_count = np.sum(y_true == 0)
-    print(f"\nBreakdown:")
-    print(f"- Ground-truth Members: {member_count}")
-    print(f"- Ground-truth Non-Members: {nonmember_count}")
-    print(f"- Model Predicted Members: {np.sum(predictions)}")
-    
-    pd.DataFrame({
-        "true_label": y_true,
-        "probability": probs, 
-        "prediction": predictions
-    }).to_csv("mia_inference_results.csv", index=False)
-    
-    print("\nDetailed results saved to mia_inference_results.csv")
+    print(f"\nFinal Summary: Identified {np.sum(predictions)} training members out of {num_sample} suspected books.")
+    pd.DataFrame({"prob": probs, "member": predictions}).to_csv("mia_results.csv", index=False)
 
 if __name__ == "__main__":
     main()
