@@ -109,9 +109,14 @@ def main():
     h1, h2 = extract_rep_half_split(all_preds_copies)
     fh1, fh2 = collect_all_features(h1, label_all), collect_all_features(h2, label_all)
 
-    safe_len = min(len(p) for p in all_preds_copies) if all_preds_copies else 200
-    cut_offs = sorted({min(c, safe_len) for c in [200, 400, safe_len]})
-    if len(cut_offs) == 1: cut_offs = cut_offs * 2
+    # Signal 6: Slope and Entropy (Fixed cut-offs for dimensionality consistency)
+    cut_offs = [100, 200, 300]
+    
+    # Ensure they don't exceed sequence length
+    seq_len = min(len(p) for p in all_preds_copies) if all_preds_copies else 150
+    # Even if seq_len < cut_off, we use cut_off so numpy array shape is consistent.
+    # The get_slope/approximate_entropy functions handle p[:c] gracefully (slice to end).
+    
     x_slope = np.column_stack([get_slope(all_preds_copies, end_time=c) for c in cut_offs])
     x_entropy = np.column_stack([np.array([approximate_entropy(p[:c], 8, 0.8) for p in all_preds_copies]) for c in cut_offs])
 
