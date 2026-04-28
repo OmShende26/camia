@@ -97,6 +97,10 @@ def extract_features_with_repeated(
             s_tk_probs = s_tk_probs.tolist() if hasattr(s_tk_probs, 'tolist') else list(s_tk_probs)
             labels = labels.tolist() if hasattr(labels, 'tolist') else list(labels)
             
+            # Flatten labels if it's a 2D list (shape was (1, seq_len))
+            if labels and isinstance(labels[0], list):
+                labels = labels[0]
+            
             # Skip if not enough tokens
             if len(s_tk_probs) < 5:
                 print(f"[WARN] Skipping text with too few tokens ({len(s_tk_probs)})")
