@@ -1,10 +1,14 @@
+torch>=1.13.0
+transformers>=4.25.0
 hydra-core
 scikit-learn
 matplotlib
 nltk
 tqdm
-scikit-learn
 packaging
 ninja
 zstandard
 simple-parsing
+pandas
+numpy
+omegaconf

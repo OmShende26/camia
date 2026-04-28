@@ -19,7 +19,7 @@ from util_features import (
 
 warnings.filterwarnings("ignore")
 
-def load_custom_pickle(path, member_only=False):
+def load_custom_pickle(path, member_only=True):
     with open(path, "rb") as f:
         data = pickle.load(f)
     if member_only:
