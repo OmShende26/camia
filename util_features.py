@@ -249,7 +249,7 @@ def get_token_diversity(labels, start_time=0, end_time=-1):
     return np.array(
         [
             len(set(labels[i][start_time:end_time]))
-            / len(labels[i][start_time:end_time])
+            / max(len(labels[i][start_time:end_time]), 1)  # Avoid division by zero
             for i in range(len(labels))
         ]
     )
