@@ -269,7 +269,7 @@ def main(config: DictConfig):
     )
 
     # Save features
-    output_file = os.path.join(new_folder, "all_features_custom_wikimia25.pkl")
+    output_file = os.path.join(new_folder, "all_features_seen_unseen_books.pkl")
     with open(output_file, "wb") as f:
         pickle.dump(
             {"member_preds": member_features, "nonmember_preds": nonmember_features}, f
