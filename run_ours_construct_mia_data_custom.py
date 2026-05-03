@@ -206,7 +206,7 @@ def main(config: DictConfig):
     # member_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/seen_books.jsonl"
     # nonmember_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/unseen_books.jsonl"    
 
-    USE_HF_DATASET = True
+    USE_HF_DATASET = False  # Set to True to load from Hugging Face, False to load from local JSONL files
     
     if USE_HF_DATASET:
         # WikiMIA-25 splits are: "WikiMIA_length32", "WikiMIA_length64", "WikiMIA_length128"
@@ -219,9 +219,9 @@ def main(config: DictConfig):
     
     else:
         # Load local JSONL datasets 
-        member_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/seen_books.jsonl"
-        nonmember_path = "/kaggle/input/datasets/omvijayshende/camia-dataset/unseen_books.jsonl"    
-        
+        member_path = "/kaggle/input/datasets/omvijayshende/final-seen-unseen-books-ds/Seen_train_dataset.jsonl"
+        nonmember_path = "/kaggle/input/datasets/omvijayshende/final-seen-unseen-books-ds/unseen_30_train_dataset.jsonl"    
+        print("Hi, I am using books dataset")
         print(f"Loading member data from {member_path}...")
         data_member = load_jsonl_dataset(member_path)
         print(f"Loaded {len(data_member)} member texts")
