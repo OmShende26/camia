@@ -1,7 +1,7 @@
 # Context-aware Membership Inference Attacks against Pre-trained Models
 [![Webpage](https://img.shields.io/badge/🌐-Webpage-blue)](https://hongyanchang.com/camia/) [![Paper](https://img.shields.io/badge/📄-Paper-red)](URL_TO_BE_PROVIDED)
 
-This repository contains the official code for the paper "Context-aware Membership Inference Attacks against Pre-trained Models", accepted at the 2025 Conference on Empirical Methods in Natural Language Processing (EMNLP 2025).
+This repository contains the code for the paper "Context-aware Membership Inference Attacks against Pre-trained Models", accepted at the 2025 Conference on Empirical Methods in Natural Language Processing (EMNLP 2025).
 
 
 ## Installation
@@ -39,7 +39,3 @@ If you use this code in your research, please cite our paper:
   year={2025}
 }
 ```
-
-## Acknowledgements
-
-This code is based on the [MIMIR codebase](https://github.com/iamgroot42/mimir) under an MIT license. 
