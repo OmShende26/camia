@@ -28,9 +28,6 @@ pip install -r requirements.txt
 - **`run.sh`**: Execute all attacks using the provided bash script
 
 ## Citation
-
-If you use this code in your research, please cite our paper:
-
 ```bibtex
 @article{chang2024context,
   title={Context-aware membership inference attacks against pre-trained large language models},
